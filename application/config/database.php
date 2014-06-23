@@ -84,7 +84,7 @@ $db['bookstore']['stricton'] = FALSE;
 $db['fedena']['hostname'] = 'localhost';
 $db['fedena']['username'] = 'root';
 $db['fedena']['password'] = '';
-$db['fedena']['database'] = 'fedena';
+$db['fedena']['database'] = 'fedena_23june';
 $db['fedena']['dbdriver'] = 'mysql';
 $db['fedena']['dbprefix'] = '';
 $db['fedena']['pconnect'] = TRUE;
@@ -102,3 +102,5 @@ $db['fedena']['stricton'] = FALSE;
 
 /* End of file database.php */
 /* Location: ./application/config/database.php */
+
+
