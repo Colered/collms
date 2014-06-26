@@ -14,15 +14,9 @@ class Invoice extends CI_Controller
 		$inNum    = $this->input->get('psReferencia');
 		$authDetails = $this->_verifyCredentials($uname, $passwd);
 		if(!empty($authDetails))
-		{
-			/* If - present in invoice number, then search in fedena otherwise search in bookstore */
-			if(strstr($inNum, '-'))
-			{
-				$this->_searchFedena($inNum);
-			}
-			else{
-				$this->_searchBookstore($inNum);
-			}
+		{		
+			$this->_searchFedena($inNum);			
+			//$this->_searchBookstore($inNum);			
 		}else{
 				$invoiceDetails = array(
 				'CodigoMensaje' => '101',
@@ -40,31 +34,48 @@ class Invoice extends CI_Controller
 		$authDetails = $this->search->getDetails($uname, $passwd);
 		return $authDetails;
 	}
-	/* Below function will search the invoice number in Fedena. If found return the details otherwise error*/
+	/* Below function will search the invoice number in Bookstore. If found return the details otherwise error*/
 	public function _searchBookstore($inNum)
 	{
 		$orderDetails = $this->search->getBookstoreInvoiceDetails($inNum);
-		//print"<pre>";print_r($orderDetails);die;
-		$invoiceDetails = '';
-		if(!empty($orderDetails) && sizeof($orderDetails) == 1){
-			$invoiceDetails = array(
-			'CodigoMensaje' => '100',
-			'DescripcionMensaje' => 'Invoice Found',
-			'NumeroReferencia' => $inNum,
-			'TipoReferencia' => 'Books Order Payment',
-			'IDDocumento' => $orderDetails[0]['id_customer'],
-			'NombreCliente' => $orderDetails[0]['firstname'].''.$orderDetails[0]['lastname'],
-			'MontoImpuesto' => '0.00',
-			'MontoTotal' => $orderDetails[0]['total_paid'],
-			'Moneda' => 'USD'
-			);			
+		if($orderDetails)
+		{
+			$customerDetails = $this->search->getCustomer($orderDetails[0]['id_customer']);
+			$chkcustomer = $this->search->checkCustomer($orderDetails[0]['id_customer']);
+			if($chkcustomer)
+			{
+				$this->search->updateCustomer($customerDetails,$orderDetails[0]['id_customer']);
+			}
+			else
+			{
+				$this->search->insertCustomer($customerDetails);
+			}
+			$invoiceDetails = '';
+			if(!empty($orderDetails) && sizeof($orderDetails) == 1){
+				$invoiceDetails = array(
+				'CodigoMensaje' => '100',
+				'DescripcionMensaje' => 'Invoice Found',
+				'NumeroReferencia' => $inNum,
+				'TipoReferencia' => 'Books Order Payment',
+				'IDDocumento' => $orderDetails[0]['id_customer'],
+				'NombreCliente' => $orderDetails[0]['firstname'].''.$orderDetails[0]['lastname'],
+				'MontoImpuesto' => '0.00',
+				'MontoTotal' => $orderDetails[0]['total_paid'],
+				'Moneda' => 'USD',
+				'Detalles' => ''
+				);			
+			}else{
+				$invoiceDetails = array(
+				'CodigoMensaje' => '102',
+				'DescripcionMensaje' => 'Invoice Not Valid',
+				);
+			}
 		}else{
 			$invoiceDetails = array(
-			'CodigoMensaje' => '101',
-			'DescripcionMensaje' => 'Invoice Not Valid',
-			);
+				'CodigoMensaje' => '102',
+				'DescripcionMensaje' => 'Invoice Not Valid',
+				);
 		}
-		//print"<pre>";print_r($invoiceDetails);die;
 		header('Content-type: application/xml');
 		$xml = new SimpleXMLElement('<DetalleConsulta  version="1.0"/>');
 		$this->_toxml($xml, $invoiceDetails);
@@ -73,30 +84,57 @@ class Invoice extends CI_Controller
 	/* Below function will search the invoice number in Fedena. If found return the details otherwise error*/
 	public function _searchFedena($inNum)
 	{
-		$invoiceArray = explode("-", $inNum);
-		$StudentID = $invoiceArray['0'];
-		$FeeCollectionID = $invoiceArray['1'];
-		$feeDetails = $this->search->getFedenaInvoiceDetails($StudentID, $FeeCollectionID);
-		if(!empty($feeDetails) && sizeof($feeDetails) == 1){
-			$invoiceDetails = array(
-			'CodigoMensaje' => '100',
-			'DescripcionMensaje' => 'Invoice Found',
-			'NumeroReferencia' => $inNum,
-			'TipoReferencia' => 'Fee Submission',
-			'IDDocumento' => $feeDetails[0]['admission_no'],
-			'NombreCliente' => $feeDetails[0]['first_name'].' '.$feeDetails[0]['middle_name'].' '.$feeDetails[0]['last_name'],
-			'MontoImpuesto' => '0.00',
-			'MontoTotal' => $feeDetails[0]['balance'],
-			'Moneda' => 'USD',
-			'Fecha' => $feeDetails[0]['due_date']
-			);			
+		$studentDetails = $this->search->getStudent($inNum);
+		if($studentDetails)
+		{
+			$chkstudent = $this->search->checkStudent($inNum);
+			if($chkstudent)
+			{
+				$this->search->updateStudent($studentDetails,$inNum);
+			}
+			else{
+				$this->search->insertStudent($studentDetails);
+			}
+			$StudentID = $studentDetails[0]['id'];
+			$feeDetails = $this->search->getFedenaInvoiceDetails($StudentID);
+			if($feeDetails)
+			{
+				$count = sizeof($feeDetails);
+				$balance = '';
+				foreach($feeDetails as $fees)
+				{
+					$balance = $balance + $fees['balance'];				
+				}
+				$due_blnc = $balance - $feeDetails[$count-1]['balance'];
+				
+					$invoiceDetails = array(
+					'CodigoMensaje' => '100',
+					'DescripcionMensaje' => 'Invoice Found',
+					'NumeroReferencia' => $inNum,
+					'TipoReferencia' => 'Fee Submission',
+					'IDDocumento' => $feeDetails[0]['admission_no'],
+					'NombreCliente' => $feeDetails[0]['first_name'].' '.$feeDetails[0]['middle_name'].' '.$feeDetails[0]['last_name'],
+					'MontoImpuesto' => '0.00',
+					'MontoTotal' => $balance,
+					'Moneda' => 'USD',
+					'Fecha' => '',
+					'Detalles' => $due_blnc						
+					);			
+			}else{
+					$invoiceDetails = array(
+					'CodigoMensaje' => '102',
+					'DescripcionMensaje' => 'Invoice Not Valid',
+					);
+					$message = 'Dear Admin<br/>There was no pending fee detail found for the invoice number - '.$inNum.' Please check.<br/><br/>Thanks,<br/>Banco Popular.';
+					$subject = 'No Fee Detail Found';
+					$this->_sendEmail($subject, $message);
+				}
 		}else{
 			$invoiceDetails = array(
-			'CodigoMensaje' => '101',
-			'DescripcionMensaje' => 'Invoice Not Valid',
-			);
+				'CodigoMensaje' => '102',
+				'DescripcionMensaje' => 'Invoice not Valid',
+				);
 		}
-		//print"<pre>";print_r($feeDetails);die;
 		header('Content-type: application/xml');
 		$xml = new SimpleXMLElement('<DetalleConsulta  version="1.0"/>');
 		$this->_toxml($xml, $invoiceDetails);
@@ -130,14 +168,8 @@ class Invoice extends CI_Controller
 		$authDetails = $this->_verifyCredentials($uname, $passwd);
 		if(!empty($authDetails))
 		{
-			/* If - present in invoice number, then search in fedena otherwise search in bookstore */
-			if(strstr($inNum, '-'))
-			{
-				$this->_callFedena($inNum, $transactionId, $amount, $paymentDate);
-			}
-			else{
-				$this->_callBookstore($inNum, $transactionId, $amount, $paymentDate);
-			}
+			$this->_callFedena($inNum, $transactionId, $amount, $paymentDate);
+			//$this->_callBookstore($inNum, $transactionId, $amount, $paymentDate);			
 		}else{
 				$invoiceDetails = array(
 				'CodigoMensaje' => '101',
@@ -150,56 +182,111 @@ class Invoice extends CI_Controller
 		}
 
 	}
+	//update fee transaction details in fedena as well as LMS
 	public function _callFedena($inNum, $transactionId, $amount, $paymentDate)
 	{
-		$invoiceArray = explode("-", $inNum);
-		$StudentID = $invoiceArray['0'];
-		$FeeCollectionID = $invoiceArray['1'];
-		$feeDetails = $this->search->getFeeAmount($StudentID, $FeeCollectionID);
-		$balance = $feeDetails['0']['balance'];
-		$finance_id = $feeDetails['0']['id'];
-		$school_id = $feeDetails['0']['school_id'];
-		if($amount < $balance)
+		$originalAmount = $amount;
+		$studentDetails = $this->search->getStudent($inNum);
+		if($studentDetails)
 		{
-			$isPaid = '0';
-			$due_amt = round($balance - $amount,2);
-			$title = 'Receipt No. (partial) F'.$finance_id;
-		}
-		else
-		{
-			$isPaid = '1';
-			$due_amt = '0.00';
-			$title = 'Receipt No. F'.$finance_id;
-		}
-		$receipts = $this->search->getMaxReceiptNo('FinanceFee');
-		$receipt_no = $receipts['0']['receipt_no'];
-		$receipt_no = $receipt_no + 1;
-		if($this->search->updateFedenaFeeDetails($StudentID, $FeeCollectionID, $transactionId, $amount, $paymentDate, $inNum, $isPaid, $due_amt, $title, $finance_id, $school_id, $receipt_no))
-		{
-			$app = 'fedena';
-			$this->search->updateLMS($inNum, $transactionId, $amount, $paymentDate, $app, '',$StudentID, $FeeCollectionID);
-			$updateDetails = array(
-			'CodigoMensaje' => '100',
-			'DescripcionMensaje' => 'Fee Details Updated',
-			'NumeroReferencia' => $inNum,
-			'NumeroAutorizacion' => '',
-			'IDTransaccionBanco' => $transactionId,
-			'ValorPagado' => $amount,
-			'Moneda' => 'USD',			
-			);	
+			$StudentID = $studentDetails[0]['id'];
+			$feeDetails = $this->search->getFedenaInvoiceDetails($StudentID);
+			if($feeDetails)
+			{
+				$totalBlnc = '';
+				foreach($feeDetails as $fees)
+				{
+					$totalBlnc = $totalBlnc + $fees['balance'];
+				}
+				if($amount > $totalBlnc)
+				{
+					$updateDetails = array(
+						'CodigoMensaje' => '103',
+						'DescripcionMensaje' => 'Amount is greater than invoice amount',
+						);	
+				}else{
+					foreach($feeDetails as $fees)
+					{
+						if($amount <= $fees['balance'])
+						{
+							$finance_id = $fees['id'];
+							if($amount == $fees['balance'])
+							{
+								$isPaid = '1';
+								$title = 'Receipt No. F'.$finance_id;
+							}else{
+								$isPaid = '0';
+								$title = 'Receipt No. (partial) F'.$finance_id;
+							}
+							$balance = $fees['balance'];
+							$due_amt = round($balance - $amount,2);							
+							$school_id = $fees['school_id'];
+							$receipts = $this->search->getMaxReceiptNo('FinanceFee');
+							$receipt_no = $receipts['0']['receipt_no'];
+							$receipt_no = $receipt_no + 1;
+							$FeeCollectionID = $fees['fee_collection_id'];
+							$this->search->updateFedenaFeeDetails($StudentID, $FeeCollectionID, $transactionId, $amount, $paymentDate, $inNum, $isPaid, $due_amt, $title, $finance_id, $school_id, $receipt_no);
+							break;
+						}
+						else{
+							$isPaid = '1';
+							$balance = $fees['balance'];
+							$pending_amt = round($amount - $balance,2);
+							$due_amt = '0.00';
+							$amount = $balance;
+							$finance_id = $fees['id'];
+							$title = 'Receipt No. F'.$finance_id;
+							$school_id = $fees['school_id'];
+							$receipts = $this->search->getMaxReceiptNo('FinanceFee');
+							$receipt_no = $receipts['0']['receipt_no'];
+							$receipt_no = $receipt_no + 1;
+							$FeeCollectionID = $fees['fee_collection_id'];
+							$this->search->updateFedenaFeeDetails($StudentID, $FeeCollectionID, $transactionId, $amount, $paymentDate, $inNum, $isPaid, $due_amt, $title, $finance_id, $school_id, $receipt_no);
+							$amount = $pending_amt;
+						}
+					}
+					$app = 'fedena';
+					$lms_txn_id = $this->search->getMaxLMSTxnId();
+					$lms_txn_id = $lms_txn_id[0]['lms_txn_id'] + 1;
+					if($this->search->updateLMS($inNum, $transactionId, $originalAmount, $paymentDate, $app, '',$StudentID, $lms_txn_id))
+					{
+						$updateDetails = array(
+									'CodigoMensaje' => '100',
+									'DescripcionMensaje' => 'Fee Details Updated',
+									'NumeroReferencia' => $inNum,
+									'NumeroAutorizacion' => $lms_txn_id,
+									'IDTransaccionBanco' => $transactionId,
+									'ValorPagado' => $originalAmount,
+									'Moneda' => 'USD',			
+									);	
+					}else{
+						$updateDetails = array(
+									'CodigoMensaje' => '104',
+									'DescripcionMensaje' => 'There is some problem in fee updation',
+									);	
+					}
+				}
+			}else{
+				$updateDetails = array(
+					'CodigoMensaje' => '102',
+					'DescripcionMensaje' => 'Invoice not valid',
+					);
+				$message = 'Dear Admin<br/>There was no pending fee detail found for the invoice number - '.$inNum.' Please check.<br/><br/>Thanks,<br/>Banco Popular.';
+				$subject = 'No Fee Detail Found';
+				$this->_sendEmail($subject, $message);
+			}
 		}else{
-			$updateDetails = array(
-			'CodigoMensaje' => '101',
-			'DescripcionMensaje' => 'Fee Details Not Updated',
-			);	
-		}
+				$updateDetails = array(
+					'CodigoMensaje' => '102',
+					'DescripcionMensaje' => 'Invoice not valid',
+					);
+		}		
 		header('Content-type: application/xml');
 		$xml = new SimpleXMLElement('<DetalleReciboPago version="1.0"/>');
 		$this->_toxml($xml, $updateDetails);
 		print $xml->asXML();
-
-
 	}
+	//update fee transaction details in Bookstore as well as LMS
 	public function _callBookstore($inNum, $transactionId, $amount, $paymentDate)
 	{
 		if($this->search->updateBookstoreOrderDetails($inNum, $transactionId, $amount, $paymentDate))
@@ -207,19 +294,21 @@ class Invoice extends CI_Controller
 			$app = 'bookstore';
 			$customers = $this->search->getCustomerId($inNum);
 			$customer_id = $customers['0']['id_customer'];
-			$this->search->updateLMS($inNum, $transactionId, $amount, $paymentDate, $app, $customer_id, '', '');
+			$lms_txn_id = $this->search->getMaxLMSTxnId();
+			$lms_txn_id = $lms_txn_id[0]['lms_txn_id'] + 1;
+			$this->search->updateLMS($inNum, $transactionId, $amount, $paymentDate, $app, $customer_id, '', $lms_txn_id);
 			$updateDetails = array(
 			'CodigoMensaje' => '100',
 			'DescripcionMensaje' => 'Order Details Updated',
 			'NumeroReferencia' => $inNum,
-			'NumeroAutorizacion' => '',
+			'NumeroAutorizacion' =>$lms_txn_id,
 			'IDTransaccionBanco' => $transactionId,
 			'ValorPagado' => $amount,
 			'Moneda' => 'USD',			
 			);	
 		}else{
 			$updateDetails = array(
-			'CodigoMensaje' => '101',
+			'CodigoMensaje' => '104',
 			'DescripcionMensaje' => 'Order Details Not Updated',
 			);	
 		}
@@ -228,20 +317,20 @@ class Invoice extends CI_Controller
 		$this->_toxml($xml, $updateDetails);
 		print $xml->asXML();
 	}
+	//Validating the transactions
 	public function ConciliarPagos()
 	{
 		$uname    = $this->input->get('psUsuario');
 		$passwd    = $this->input->get('psPassword');
 		$canal    = $this->input->get('psCanal');
-		//$simple    = $this->input->get('psXMLDatos');
 		$authDetails = $this->_verifyCredentials($uname, $passwd);
 		if(!empty($authDetails))
 		{
 			$xmlstring = '<DetalleConsulta> 
-			<IDTransaccion>123456</IDTransaccion> 
+			<IDTransaccion>111112</IDTransaccion> 
 			<FechaTransaccion>2014-06-23 15:30:48.000000</FechaTransaccion> 
-			<Valor>12.75</Valor> 
-			<Referencia>1638-1</Referencia> 
+			<Valor>34.75</Valor> 
+			<Referencia>QREQBPRBM</Referencia> 
 			</DetalleConsulta>';
 
 			// load as string
@@ -259,42 +348,43 @@ class Invoice extends CI_Controller
 				$amt = $txnDetails['0']['amount'];
 				if($inv_no == $txn_ref && $amt == $txn_amt)
 				{
-					$txn = array(
+					$invoiceDetails = array(
 					'CodigoMensaje' => '100',
 					'DescripcionMensaje' => 'Transaction validated successfully',
 					);
 				}
 				else
 				{
-					$txn = array(
-					'CodigoMensaje' => '101',
+					$invoiceDetails = array(
+					'CodigoMensaje' => '105',
 					'DescripcionMensaje' => 'Transaction not validated successfully',
 					);
-				}
-				header('Content-type: application/xml');
-				$xml = new SimpleXMLElement('<DetalleReciboPago version="1.0"/>');
-				$this->_toxml($xml, $txn);
-				print $xml->asXML();
-
-				
-
+				}				
+			}else{
+					$invoiceDetails = array(
+					'CodigoMensaje' => '105',
+					'DescripcionMensaje' => 'Transaction not validated successfully',
+					);
 			}
-			
-
-			
 		}else{
 				$invoiceDetails = array(
 				'CodigoMensaje' => '101',
 				'DescripcionMensaje' => 'Authentication Failed',
-				);
-				header('Content-type: application/xml');
-				$xml = new SimpleXMLElement('<DetalleConsulta  version="1.0"/>');
-				$this->_toxml($xml, $invoiceDetails);
-				print $xml->asXML();
+				);				
 		}
-
-
-		
+		header('Content-type: application/xml');
+		$xml = new SimpleXMLElement('<DetalleConsulta  version="1.0"/>');
+		$this->_toxml($xml, $invoiceDetails);
+		print $xml->asXML();
+	}
+	public function _sendEmail($subject, $message)
+	{
+		$to = 'deepali.kakkar@ibtechnology.com';
+		$headers = "MIME-Version: 1.0" . "\r\n";
+		$headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+		// More headers
+		$headers .= 'From:Banco Popular <yourbank@yopmail.com>' . "\r\n";
+		mail($to,$subject,$message,$headers);
 	}
 }
 ?>
