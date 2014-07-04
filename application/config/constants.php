@@ -37,5 +37,13 @@ define('FOPEN_WRITE_CREATE_STRICT',				'xb');
 define('FOPEN_READ_WRITE_CREATE_STRICT',		'x+b');
 
 
+define('FEDENA_APP_ID', '1');
+define('BOOKSTORE_APP_ID', '2');
+define('DEFAULT_LMS_TXN_ID', '666666');
+define('TO_EMAIL', 'deepali.kakkar@ibtechnology.com');
+define('FROM_EMAIL', 'yourbank@yopmail.com');
+define('FROM_NAME', 'Banco Popular');
+define('BANCO_POPULAR_STATUS', '13');
+
 /* End of file constants.php */
 /* Location: ./application/config/constants.php */
