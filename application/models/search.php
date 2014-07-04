@@ -67,7 +67,7 @@ class Search extends CI_Model
 				'created_at' => $studentDetails[0]['created_at'],
 				'updated_at' => $studentDetails[0]['updated_at'],
 				'school_id' => $studentDetails[0]['school_id'],
-				'app_name' => 'fedena'
+				'app_id' => FEDENA_APP_ID
 				);
 		$this->_DB_LMS->insert('users', $studentData); 
 	}
@@ -85,17 +85,18 @@ class Search extends CI_Model
 	public function getBookstoreInvoiceDetails($inNum)
 	{
 		$this->_DB_BOOK = $this->load->database('bookstore', TRUE);
-		$this->_DB_BOOK->select('ps_orders.id_customer, ps_orders.total_paid, ps_customer.firstname, ps_customer.lastname');
+		$this->_DB_BOOK->select('ps_orders.id_order, ps_orders.id_customer, ps_orders.total_paid, ps_customer.firstname, ps_customer.lastname');
 		$this->_DB_BOOK->from('ps_orders');
 		$this->_DB_BOOK->join('ps_customer', 'ps_customer.id_customer = ps_orders.id_customer');
 		$this->_DB_BOOK->where('reference', $inNum); 
+		$this->_DB_BOOK->where('current_state', BANCO_POPULAR_STATUS); 
 		$query = $this->_DB_BOOK->get();
 		return $query->result_array();
 	}
 	public function getCustomer($customerID)
 	{
 		$this->_DB_BOOK = $this->load->database('bookstore', TRUE);
-		$this->_DB_BOOK->select('ps_customer.firstname, ps_customer.lastname, ps_customer.email, ps_customer.date_add, ps_customer.date_upd, ps_customer.id_shop, ps_address.address1, ps_address.address2, ps_address.city, ps_address.id_state, ps_address.postcode, ps_address.id_country, ps_address.phone, ps_address.phone_mobile');
+		$this->_DB_BOOK->select('ps_customer.id_customer, ps_customer.firstname, ps_customer.lastname, ps_customer.email, ps_customer.date_add, ps_customer.date_upd, ps_customer.id_shop, ps_address.address1, ps_address.address2, ps_address.city, ps_address.id_state, ps_address.postcode, ps_address.id_country, ps_address.phone, ps_address.phone_mobile');
 		$this->_DB_BOOK->from('ps_customer');
 		$this->_DB_BOOK->join('ps_address', 'ps_customer.id_customer = ps_address.id_customer');
 		$this->_DB_BOOK->where('ps_customer.id_customer', $customerID); 
@@ -134,7 +135,7 @@ class Search extends CI_Model
 				'created_at' => $customerDetails[0]['date_add'],
 				'updated_at' => $customerDetails[0]['date_upd'],
 				'school_id' => $customerDetails[0]['id_shop'],
-				'app_name' => 'bookstore'
+				'app_id' => BOOKSTORE_APP_ID
 				);
 		$this->_DB_LMS->where('customer_id', $customerID);
 		$this->_DB_LMS->update('users', $customerData); 
@@ -161,7 +162,7 @@ class Search extends CI_Model
 				'created_at' => $customerDetails[0]['date_add'],
 				'updated_at' => $customerDetails[0]['date_upd'],
 				'school_id' => $customerDetails[0]['id_shop'],
-				'app_name' => 'bookstore'
+				'app_id' => BOOKSTORE_APP_ID
 				);
 		$this->_DB_LMS->insert('users', $customerData); 
 	}
@@ -215,14 +216,13 @@ class Search extends CI_Model
 		$this->_DB_LMS->limit('1');
 		$query = $this->_DB_LMS->get();
 		return $query->result_array();
-
 	}
 	public function updateLMS($inNum='', $transactionId='', $amount='', $paymentDate='', $app='', $customer_id='', $StudentID='', $lms_txn_id = '')
 	{
 		$this->_DB_LMS = $this->load->database('default', TRUE);
 		$paymentData = array(
 				'invoice_number' => $inNum,
-				'app_name' => $app ,  
+				'app_id' => $app ,  
 				'txn_id' => $transactionId,
 				'lms_txn_id' => $lms_txn_id,
 				'amount' => $amount,
@@ -242,8 +242,7 @@ class Search extends CI_Model
                'date_upd' => $paymentDate
             );
 		$this->_DB_BOOK->where('reference', $inNum);
-		$this->_DB_BOOK->update('ps_orders', $data); 
-
+		$this->_DB_BOOK->update('ps_orders', $data);
 
 		$paymentData = array(
 				'order_reference' => $inNum,
@@ -269,6 +268,44 @@ class Search extends CI_Model
 		$this->_DB_LMS->select('id, invoice_number, amount');
 		$this->_DB_LMS->from('payment_details');
 		$this->_DB_LMS->where('txn_id', $txn_id);		
+		$query = $this->_DB_LMS->get();
+		return $query->result_array();
+	}
+	public function insertInvoice($inNum, $app='')
+	{
+		$this->_DB_LMS = $this->load->database('default', TRUE);
+		$invoiceData = array(
+				'invoice_number' => $inNum,
+				'app_id' => $app
+				);
+		$this->_DB_LMS->insert('invoices', $invoiceData); 
+	}
+	public function updateInvoice($inNum, $app, $id)
+	{
+		$this->_DB_LMS = $this->load->database('default', TRUE);
+		$invoiceData = array(
+				'invoice_number' => $inNum,
+				'app_id' => $app
+				);
+		$this->_DB_LMS->where('id', $id);
+		$this->_DB_LMS->update('invoices', $invoiceData); 
+	}
+	public function searchInvoice($inNum)
+	{
+		$this->_DB_LMS = $this->load->database('default', TRUE);
+		$this->_DB_LMS->select('app_id');
+		$this->_DB_LMS->from('invoices');
+		$this->_DB_LMS->where('invoice_number', $inNum);		
+		$query = $this->_DB_LMS->get();
+		return $query->result_array();
+	}
+	public function checkInvoice($inNum)
+	{
+		$this->_DB_LMS = $this->load->database('default', TRUE);
+		$this->_DB_LMS->select('id');
+		$this->_DB_LMS->from('invoices');
+		$this->_DB_LMS->where('invoice_number', $inNum);
+		$this->_DB_LMS->where('app_id', FEDENA_APP_ID);
 		$query = $this->_DB_LMS->get();
 		return $query->result_array();
 	}
