@@ -200,9 +200,40 @@ class Search extends CI_Model
 				'payee_id' => $StudentID,
 				'payee_type' => 'Student',
 				'receipt_no' => $receipt_no,
-				'payment_mode' => 'Internet Banking',
+				'payment_mode' => 'BP-Internet Banking',
 				'school_id' => $school_id,
 				'user_id' => '1',
+				);
+		$this->_DB_FED->insert('finance_transactions', $paymentData); 
+		return true;
+	}
+	public function updateFedenaFeeDetailsByBHD($StudentID, $FeeCollectionID, $descRef, $amount, $paymentType, $inNum,$canal, $isPaid, $due_amt, $title, $finance_id, $school_id, $receipt_no)
+	{
+		$this->_DB_FED = $this->load->database('fedena', TRUE);
+		$data = array(
+               'is_paid' => $isPaid,
+               'balance' => $due_amt,
+               'updated_at' => date("Y-m-d H:i:s")
+            );
+		$this->_DB_FED->where('student_id', $StudentID);
+		$this->_DB_FED->where('fee_collection_id', $FeeCollectionID);
+		$this->_DB_FED->update('finance_fees', $data); 
+        
+		$paymentData = array(
+				'title' => $title,
+				'amount' => $amount ,   
+				'payment_mode' => 'BHD- '.$paymentType,
+				'category_id' => '3',
+				'created_at' => date("Y-m-d H:i:s"),
+				'updated_at' => date("Y-m-d H:i:s"),
+				'transaction_date' => date("Y-m-d H:i:s"),
+				'finance_id' => $finance_id,
+				'finance_type' => 'FinanceFee',
+				'payee_id' => $StudentID,
+				'payee_type' => 'Student',
+				'receipt_no' => $receipt_no,
+				'school_id' => $school_id,
+				'user_id' => '1'
 				);
 		$this->_DB_FED->insert('finance_transactions', $paymentData); 
 		return true;
@@ -217,7 +248,7 @@ class Search extends CI_Model
 		$query = $this->_DB_LMS->get();
 		return $query->result_array();
 	}
-	public function updateLMS($inNum='', $transactionId='', $amount='', $paymentDate='', $app='', $customer_id='', $StudentID='', $lms_txn_id = '')
+	public function updateLMS($inNum='', $app='', $transactionId='', $lms_txn_id = '', $amount='', $paymentDate='', $StudentID='', $customer_id='', $paymentType='', $canal='', $bank_id='')
 	{
 		$this->_DB_LMS = $this->load->database('default', TRUE);
 		$paymentData = array(
@@ -228,12 +259,16 @@ class Search extends CI_Model
 				'amount' => $amount,
 				'payment_date' => $paymentDate,
 				'student_id' => $StudentID,
-				'customer_id' => $customer_id	
+				'customer_id' => $customer_id,
+				'payment_type' => $paymentType,
+				'canal' => $canal,				
+				'bank_id' => $bank_id	 
 				);
 		$this->_DB_LMS->insert('payment_details', $paymentData); 
 		return true;
 	}
-	public function updateBookstoreOrderDetails($inNum, $transactionId, $amount, $paymentDate)
+	
+	public function updateBookstoreOrderDetails($inNum, $transactionId, $amount, $paymentDate, $paymentType)
 	{
 		$this->_DB_BOOK = $this->load->database('bookstore', TRUE);
 		$data = array(
@@ -248,14 +283,13 @@ class Search extends CI_Model
 				'order_reference' => $inNum,
 				'id_currency' => '1' ,   //INR
 				'amount' => $amount,
-				'payment_method' => 'Banco Popular Internet Banking',
+				'payment_method' => $paymentType,
 				'transaction_id' => $transactionId,
 				'date_add' => $paymentDate,
-
 				);
 		$this->_DB_BOOK->insert('ps_order_payment', $paymentData); 
 		return true;
-	}	
+	}
 	public function getCustomerId($inNum)
 	{
 		$this->_DB_BOOK = $this->load->database('bookstore', TRUE);
