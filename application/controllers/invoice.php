@@ -181,9 +181,9 @@ class Invoice extends CI_Controller
 			$apps = $this->search->searchInvoice($inNum);
 			if($apps[0]['app_id'] == FEDENA_APP_ID)
 			{
-				$this->_callFedena($inNum, $transactionId, $amount, $paymentDate);
+				$this->_callFedena($inNum, $transactionId, $amount, $paymentDate, $canal);
 			}else{
-				$this->_callBookstore($inNum, $transactionId, $amount, $paymentDate);
+				$this->_callBookstore($inNum, $transactionId, $amount, $paymentDate, $canal);
 			}
 		}else{
 				$invoiceDetails = array(
@@ -197,7 +197,7 @@ class Invoice extends CI_Controller
 		}
 	}
 	//update fee transaction details in fedena as well as LMS
-	public function _callFedena($inNum, $transactionId, $amount, $paymentDate)
+	public function _callFedena($inNum, $transactionId, $amount, $paymentDate, $canal)
 	{
 		$originalAmount = $amount;
 		$studentDetails = $this->search->getStudent($inNum);
@@ -264,8 +264,9 @@ class Invoice extends CI_Controller
 					if($lms_txn_id)
 						$lms_txn_id = $lms_txn_id[0]['lms_txn_id'] + 1;
 					else
-						$lms_txn_id = '666666';
-					if($this->search->updateLMS($inNum, $transactionId, $originalAmount, $paymentDate, $app, '',$StudentID, $lms_txn_id))
+						$lms_txn_id = DEFAULT_LMS_TXN_ID;
+					$bank_id = BP_BANK_ID;
+					if($this->search->updateLMS($inNum, $app, $transactionId, $lms_txn_id, $originalAmount, $paymentDate, $StudentID, '', '', $canal, $bank_id))						
 					{
 						$updateDetails = array(
 									'CodigoMensaje' => '100',
@@ -301,7 +302,7 @@ class Invoice extends CI_Controller
 		print $xml->asXML();
 	}
 	//update fee transaction details in Bookstore as well as LMS
-	public function _callBookstore($inNum, $transactionId, $amount, $paymentDate)
+	public function _callBookstore($inNum, $transactionId, $amount, $paymentDate, $canal)
 	{
 		$orderDetails = $this->search->getBookstoreInvoiceDetails($inNum);
 		if($amount > $orderDetails[0]['total_paid'])
@@ -313,14 +314,19 @@ class Invoice extends CI_Controller
 		}
 		else
 		{
-			if($this->search->updateBookstoreOrderDetails($inNum, $transactionId, $amount, $paymentDate))
+			$paymentType = 'BP - Internet Banking';
+			if($this->search->updateBookstoreOrderDetails($inNum, $transactionId, $amount, $paymentDate, $paymentType))
 			{
 				$app = BOOKSTORE_APP_ID;
 				$customers = $this->search->getCustomerId($inNum);
 				$customer_id = $customers['0']['id_customer'];
 				$lms_txn_id = $this->search->getMaxLMSTxnId();
-				$lms_txn_id = $lms_txn_id[0]['lms_txn_id'] + 1;
-				$this->search->updateLMS($inNum, $transactionId, $amount, $paymentDate, $app, $customer_id, '', $lms_txn_id);
+				if($lms_txn_id)
+						$lms_txn_id = $lms_txn_id[0]['lms_txn_id'] + 1;
+					else
+						$lms_txn_id = DEFAULT_LMS_TXN_ID;
+				$bank_id = BP_BANK_ID;
+				$this->search->updateLMS($inNum, $app, $transactionId, $lms_txn_id, $amount, $paymentDate, '', $customer_id, '', $canal, $bank_id);
 				$updateDetails = array(
 				'CodigoMensaje' => '100',
 				'DescripcionMensaje' => 'Order Details Updated',
