@@ -47,5 +47,9 @@ define('BANCO_POPULAR_STATUS', '13');
 define('BHD_BANK_ID', '2');
 define('BP_BANK_ID', '1');
 
+define('PAY_TYPE_BANKPOPULAR', 'popular');
+define('PAY_TYPE_BOOKSTORE', 'bookstore');
+
+
 /* End of file constants.php */
 /* Location: ./application/config/constants.php */

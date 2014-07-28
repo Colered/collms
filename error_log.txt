@@ -1,0 +1,10 @@
+[25-Jul-2014:14:34:12] (VerificarReferencia) The invoice number - ashga67 does not found in any database Bookstore and Fedena.
+[25-Jul-2014:12:54:39] (verifyInvoice) The invoice number - dskjfksjdf does not found in any database bookstore and Fedena.
+[25-Jul-2014:12:55:09] (verifyInvoice) The invoice number - dskjfksjdf does not found in any database bookstore and Fedena.
+[25-Jul-2014:12:57:10] (verifyInvoice) The invoice number - dskjfksjdf does not found in any database bookstore and Fedena.
+[25-Jul-2014:12:59:10] (verifyInvoice) The invoice number - dskjfksjdf does not found in any database bookstore and Fedena.
+[25-Jul-2014:13:01:50] (verifyInvoice) The invoice number - dskjfksjdf does not found in any database bookstore and Fedena.
+[25-Jul-2014:13:03:33] (verifyInvoice) The invoice number - dskjfksjdf does not found in any database bookstore and Fedena.
+[25-Jul-2014:13:04:00] (verifyInvoice) The invoice number - dskjfksjdf does not found in any database bookstore and Fedena.
+[25-Jul-2014:13:04:22] (verifyInvoice) The invoice number - dskjfksjdf does not found in any database bookstore and Fedena.
+[25-Jul-2014:13:12:36] (verifyInvoice) The invoice number - dskjfksjdf does not found in any database bookstore and Fedena.
