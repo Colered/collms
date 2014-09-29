@@ -8,3 +8,6 @@
 [25-Jul-2014:13:04:00] (verifyInvoice) The invoice number - dskjfksjdf does not found in any database bookstore and Fedena.
 [25-Jul-2014:13:04:22] (verifyInvoice) The invoice number - dskjfksjdf does not found in any database bookstore and Fedena.
 [25-Jul-2014:13:12:36] (verifyInvoice) The invoice number - dskjfksjdf does not found in any database bookstore and Fedena.
+[25-Aug-2014:06:56:12] (verifyInvoice) The invoice number - dfjjgjgjg does not found in any database bookstore and Fedena.
+[25-Aug-2014:06:56:39] (verifyInvoice) The invoice number - dfjjgjgjg does not found in any database bookstore and Fedena.
+[25-Aug-2014:06:57:54] (verifyInvoice) The invoice number - dfjjgjgjg does not found in any database bookstore and Fedena.
