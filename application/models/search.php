@@ -89,14 +89,14 @@ class Search extends CI_Model
 		return $query->result_array();
 	}
 	/*Fetching the invoice detail from the bookstore system using referane number*/
-	public function getBookstoreInvoiceDetails($inNum)
+	public function getBookstoreInvoiceDetails($inNum,$bank_status)
 	{
 		$this->_DB_BOOK = $this->load->database('bookstore', TRUE);
 		$this->_DB_BOOK->select('ps_orders.id_order, ps_orders.id_customer, ps_orders.total_paid, ps_customer.firstname, ps_customer.lastname');
 		$this->_DB_BOOK->from('ps_orders');
 		$this->_DB_BOOK->join('ps_customer', 'ps_customer.id_customer = ps_orders.id_customer');
 		$this->_DB_BOOK->where('reference', $inNum);
-		$this->_DB_BOOK->where('current_state', BANCO_POPULAR_STATUS);
+		$this->_DB_BOOK->where('current_state', $bank_status);
 		$query = $this->_DB_BOOK->get();
 		return $query->result_array();
 	}

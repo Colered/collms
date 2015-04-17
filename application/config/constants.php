@@ -44,6 +44,7 @@ define('TO_EMAIL', 'deepali.kakkar@ibtechnology.com');
 define('FROM_EMAIL', 'yourbank@yopmail.com');
 define('FROM_NAME', 'Banco Popular');
 define('BANCO_POPULAR_STATUS', '13');
+define('BHD_STATUS', '13');
 define('BHD_BANK_ID', '2');
 define('BP_BANK_ID', '1');
 

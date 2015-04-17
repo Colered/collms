@@ -10,7 +10,7 @@
  */
 class Errorlog {
 	// declare log file and file pointer as private properties
-	private $log_file='D:/xampp/htdocs/collms/error_log.txt';
+	private $log_file='C:/xampp/htdocs/collms/error_log.txt';
 	//private $log_file='/var/www/html/lms/error_log.txt';
 	private $fp;
 

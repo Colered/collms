@@ -115,7 +115,8 @@ class BHD extends CI_Controller
 	public function _searchBookstore($inNum)
 	{
 	    $invoice=array();
-		$orderDetails = $this->search->getBookstoreInvoiceDetails($inNum);
+		$bank_status = BHD_STATUS;
+		$orderDetails = $this->search->getBookstoreInvoiceDetails($inNum,$bank_status);
 		if($orderDetails && sizeof($orderDetails) == 1)
 		{
 			$customerDetails = $this->search->getCustomer($orderDetails[0]['id_customer']);
