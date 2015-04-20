@@ -48,7 +48,7 @@ class BHD extends CI_Controller
 
 			}
 		foreach($invoice as $key => $value){
-			$encodedInvoice[$key] = $value;
+			$encodedInvoice[$this->_mb_convert($key)] = $value;			
 		}
 
 		xml_viewpage($encodedInvoice);
