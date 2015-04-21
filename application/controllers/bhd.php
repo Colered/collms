@@ -48,7 +48,7 @@ class BHD extends CI_Controller
 
 			}
 		foreach($invoice as $key => $value){
-			$encodedInvoice[$this->_mb_convert($key)] = $value;	
+			$encodedInvoice[$this->_mb_convert($key)] = $value;
 		}
 
 		xml_viewpage($encodedInvoice);
@@ -185,17 +185,17 @@ class BHD extends CI_Controller
 	{
 		    $caseId    = $this->input->get('IdCaja');
 		    $origin_Guid = $this->input->get('GuidOrigen');
-			$transactions=array("IDTransaccion"=>"xyz","FechaTransaccion"=>"2014-06-23 15:30:48.000000","cantidad"=>"89.89","Referencia"=>"POHFUHFDU");
+			$transactions=array("IDTransaccion"=>"123456","FechaTransaccion"=>"2014-06-23 15:30:48.000000","cantidad"=>"1000","Referencia"=>"185344");
 			$txn_id = $transactions['IDTransaccion'];
 			$txn_date = $transactions['FechaTransaccion'];
 			$txn_amt = $transactions['cantidad'];
 			$txn_ref = $transactions['Referencia'];
 			$txnDetails = $this->search->checkTransactionExist($txn_id);
-			if($txnDetails['0']['app_id']=='2') {
+			/*if($txnDetails['0']['app_id']=='2') {
 			   $book_store_app_id=$txnDetails['0']['app_id'];
 			   $book_store_invoice_num=$txnDetails['0']['invoice_number'];
 			   $this->search->updateLmsCaseGuidId($book_store_app_id,$book_store_invoice_num,$caseId,$origin_Guid);
-			}
+			}*/
 			if($txnDetails)
 			{
 				$inv_no = $txnDetails['0']['invoice_number'];
@@ -236,19 +236,19 @@ class BHD extends CI_Controller
 	{
 		$caseId = $this->input->get('IdCaja');
 		$origin_Guid = $this->input->get('GuidOrigen');
-		$order_detail=$this->search->getPaymentDetail($caseId,$origin_Guid);
+		$cancelGuid = $this->input->get('GuidDetalleAnular');
+		$type    = $this->input->get('Tipo');
+		$reason    = $this->input->get('Motivo');
+		$order_detail=$this->search->getPaymentDetail($cancelGuid);
 		if($order_detail){
 		   $invoice_num=$order_detail[0]['invoice_number'];
 	       $id=$order_detail[0]['id'];
-		   $cancelGuid = $this->input->get('GuidDetalleAnular');
-		   $type    = $this->input->get('Tipo');
-		   $reason    = $this->input->get('Motivo');
 		   $update_date = date("Y-m-d H:i:s");
 		   $this->search->updateOrderDetail($invoice_num,$update_date);
-		   $this->search->updateLmsCancelStatus($cancelGuid,$type,$reason,$invoice_num,$id);
+		   $this->search->updateLmsCancelStatus($cancelGuid,$type,$reason,$invoice_num,$id,$caseId,$origin_Guid);
 		   $invoiceDetails = array(
 					'CodRespuesta' => '100',
-					'DescRespuesta' => 'Cancellation successfully',
+					'DescRespuesta' => 'Cancellation successfully done.',
 					'GuidOrigen'=>$origin_Guid,
 					'DetalleAnulacion'=>'ZZZZZZZZZZZZZ'
 					);
@@ -438,6 +438,4 @@ class BHD extends CI_Controller
 		$headers .= "From:FROM_NAME <FROM_EMAIL>" . "\r\n";
 		mail($to,$subject,$message,$headers);
 	}
-
-
 }
