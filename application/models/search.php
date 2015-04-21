@@ -397,6 +397,7 @@ class Search extends CI_Model
 		$this->_DB_LMS->from('invoices');
 		$this->_DB_LMS->where('invoice_number', $inNum);
 		$query = $this->_DB_LMS->get();
+		//echo $this->_DB_LMS->last_query();
 		return $query->result_array();
 	}
 	/*Checking invoice number into the lms application*/
