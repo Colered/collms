@@ -48,7 +48,7 @@ class BHD extends CI_Controller
 
 			}
 		foreach($invoice as $key => $value){
-			$encodedInvoice[$this->_mb_convert($key)] = $value;			
+			$encodedInvoice[$this->_mb_convert($key)] = $value;	
 		}
 
 		xml_viewpage($encodedInvoice);
@@ -161,11 +161,12 @@ class BHD extends CI_Controller
 		$paymentType = $this->input->get('Tipo_Pago');
 		$canal    = $this->input->get('Canal');
 		$apps = $this->search->searchInvoice($inNum);
+		//print"<pre>";print_r($apps);die;
 		$invoice = '';
 		if($apps[0]['app_id'] == FEDENA_APP_ID) {
-			$this->_callFedena($inNum, $descRef, $amount, $paymentType,$canal);
+			$invoice = $this->_callFedena($inNum, $descRef, $amount, $paymentType,$canal);
 		}elseif($apps[0]['app_id'] == BOOKSTORE_APP_ID){
-			$this->_callBookstore($inNum, $descRef, $amount, $paymentType,$canal);
+			$invoice = $this->_callBookstore($inNum, $descRef, $amount, $paymentType,$canal);
 		}else{
 			$invoice['Codigo_Respuesta'] = '104';
 			$invoice['Descripción_Respuesta'] = 'Invoice Not Found';
@@ -174,7 +175,7 @@ class BHD extends CI_Controller
 			$this->errorlog->lwrite('The invoice number - '.$inNum.' does not exist in our record.');
 		}
 		foreach($invoice as $key => $value){
-			$encodedInvoice[$this->_mb_convert($key)] = $value;
+			$encodedInvoice[$this->_mb_convert($key)] = $value;	
 		}
 
 		xml_viewpage($encodedInvoice);
@@ -370,16 +371,13 @@ class BHD extends CI_Controller
 					'Descripción_Respuesta' => 'No student found',
 					);
 		}
-		foreach($updateDetails as $key => $value){
-					$encodedInvoice[$this->_mb_convert($key)] = $value;
-		}
-
-		xml_viewpage($encodedInvoice);
+		return $updateDetails;
 	}
 	/*Update fee transaction details in Bookstore as well as LMS*/
 	public function _callBookstore($inNum, $descRef, $amount, $paymentType,$canal)
 	{
-		$orderDetails = $this->search->getBookstoreInvoiceDetails($inNum);
+		$bank_status = BHD_STATUS;
+		$orderDetails = $this->search->getBookstoreInvoiceDetails($inNum,$bank_status);
 		if($orderDetails){
 		if($amount > $orderDetails[0]['total_paid']) {
 			$updateDetails = array(
@@ -423,11 +421,7 @@ class BHD extends CI_Controller
 				'Descripción_Respuesta' => 'Invoice Not Valid',
 				);
 		}
-		foreach($updateDetails as $key => $value){
-					$encodedInvoice[$this->_mb_convert($key)] = $value;
-		}
-
-		xml_viewpage($encodedInvoice);
+		return $updateDetails;
 	}
 
 	/*Convert the special characters into utf-8*/
