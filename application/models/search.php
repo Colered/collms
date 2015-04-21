@@ -336,12 +336,11 @@ class Search extends CI_Model
 
 	}
 	/*Fetching the payment detail from the lms application where case id and guid exist using BHD api*/
-	public function getPaymentDetail($caseId,$origin_Guid){
+	public function getPaymentDetail($cancelGuid){
 		$this->_DB_LMS = $this->load->database('default', TRUE);
 		$this->_DB_LMS->select('*');
 		$this->_DB_LMS->from('payment_details');
-		$this->_DB_LMS->where('case_id', $caseId);
-		$this->_DB_LMS->where('origin_guid', $origin_Guid);
+		$this->_DB_LMS->where('lms_txn_id', $cancelGuid);
 		$query = $this->_DB_LMS->get();
 		return $query->result_array();
 	}
@@ -356,9 +355,11 @@ class Search extends CI_Model
 		$this->_DB_LMS->update('ps_orders', $invoiceData);
 	}
 	/*Updating cancel transaction detail into the lms application*/
-	public function updateLmsCancelStatus($cancelGuid,$type,$reason,$invoice_num,$id){
+	public function updateLmsCancelStatus($cancelGuid,$type,$reason,$invoice_num,$id,$caseId,$origin_Guid){
 		$this->_DB_LMS = $this->load->database('default', TRUE);
 		$invoiceData = array(
+				'case_id' =>$caseId,
+				'origin_guid' =>$origin_Guid,
 				'cancel_guid' => $cancelGuid,
 				'cancel_type' => $type,
 				'cancel_reason' => $reason,
