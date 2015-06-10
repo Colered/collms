@@ -27,7 +27,6 @@ class Invoice extends CI_Controller
 				$message = 'Dear Admin<br/>The invoice number - '.$inNum.' exists in both databases. Please check.<br/><br/>Thanks,<br/>Banco Popular.';
 				$subject = 'Duplicate Invoice Found';
 				$this->_sendEmail($subject, $message);
-
 				// write message to the log file
 				$this->errorlog->lwrite('The invoice number - '.$inNum.' exists in both databases Bookstore and Fedena.');
 
@@ -62,8 +61,6 @@ class Invoice extends CI_Controller
 				// write message to the log file
 				$this->errorlog->lwrite('An error occurred while trying to authenticate your account with username='.$uname.' and password='.$passwd.'');
 		}
-
-
 		xml_viewpage($invoice);
 	}
 	/* Function to authenticate API Call */
@@ -75,7 +72,9 @@ class Invoice extends CI_Controller
 	/* Below function will search the invoice number in Bookstore. If found return the details otherwise error*/
 	public function _searchBookstore($inNum)
 	{
-		$orderDetails = $this->search->getBookstoreInvoiceDetails($inNum);
+		$invoice=array();
+		$bank_status = BANCO_POPULAR_STATUS;
+		$orderDetails = $this->search->getBookstoreInvoiceDetails($inNum,$bank_status);
 		if($orderDetails && sizeof($orderDetails) == 1)
 		{
 			$customerDetails = $this->search->getCustomer($orderDetails[0]['id_customer']);
@@ -90,8 +89,7 @@ class Invoice extends CI_Controller
 			}
 			$app = BOOKSTORE_APP_ID;
 			$this->search->insertInvoice($inNum,$app);
-			$invoiceDetails = '';
-			$invoiceDetails = array(
+			$invoice = array(
 			'CodigoMensaje' => '100',
 			'DescripcionMensaje' => 'Invoice Found',
 			'NumeroReferencia' => $inNum,
@@ -101,14 +99,15 @@ class Invoice extends CI_Controller
 			'MontoImpuesto' => '0.00',
 			'MontoTotal' => $orderDetails[0]['total_paid'],
 			'Moneda' => 'USD',
-			'Detalles' => ''
+			'Fecha' => '',
+			'Detalle' => ''
 			);
 		}else{
-			$invoiceDetails = array(
+			$invoice = array(
 				'CodigoMensaje' => '102'
 			);
 		}
-	return $invoiceDetails;
+	return $invoice;
 	}
 	/* Below function will search the invoice number in Fedena. If found return the details otherwise error*/
 	public function _searchFedena($inNum)
@@ -141,30 +140,30 @@ class Invoice extends CI_Controller
 					$this->search->updateInvoice($inNum, $app, $prevDetails[0]['id']);
 				else
 					$this->search->insertInvoice($inNum, $app);
-				$invoiceDetails = array(
+				$invoice = array(
 				'CodigoMensaje' => '100',
 				'DescripcionMensaje' => 'Invoice Found',
 				'NumeroReferencia' => $inNum,
 				'TipoReferencia' => 'Fee Submission',
-				'IDDocumento' => $feeDetails[0]['admission_no'],
+				'IDDocumento' => $StudentID,
 				'NombreCliente' => $feeDetails[0]['first_name'].' '.$feeDetails[0]['middle_name'].' '.$feeDetails[0]['last_name'],
 				'MontoImpuesto' => '0.00',
 				'MontoTotal' => $balance,
 				'Moneda' => 'USD',
 				'Fecha' => '',
-				'Detalles' => $due_blnc
+				'Detalle' => $due_blnc
 				);
 			}else{
-					$invoiceDetails = array(
+					$invoice = array(
 					'CodigoMensaje' => '103'
 					);
 				}
 		}else{
-			$invoiceDetails = array(
+			$invoice = array(
 				'CodigoMensaje' => '102'
 				);
 		}
-		return $invoiceDetails;
+		return $invoice;
 	}
 	/* Converts the array result into xml */
 	function _toxml(SimpleXMLElement $object, array $data)
@@ -197,32 +196,26 @@ class Invoice extends CI_Controller
 			$apps = $this->search->searchInvoice($inNum);
 			if($apps[0]['app_id'] == FEDENA_APP_ID)
 			{
-				$this->_callFedena($inNum, $transactionId, $amount, $paymentDate, $canal);
+				$invoice = $this->_callFedena($inNum, $transactionId, $amount, $paymentDate, $canal);
 			}elseif($apps[0]['app_id'] == BOOKSTORE_APP_ID){
-				$this->_callBookstore($inNum, $transactionId, $amount, $paymentDate, $canal);
+				$invoice = $this->_callBookstore($inNum, $transactionId, $amount, $paymentDate, $canal);
 			}else{
-				$invoiceDetails = array(
+				$invoice = array(
 				'CodigoMensaje' => '104',
 				'DescripcionMensaje' => 'Invoice Not Found',
 				);
-
 				// write message to the log file
 				$this->errorlog->lwrite('The invoice number - '.$inNum.' exists in both databases Bookstore and Fedena.');
-
-				xml_viewpage($invoiceDetails);
-
 			}
 		}else{
-				$invoiceDetails = array(
+				$invoice = array(
 				'CodigoMensaje' => '101',
 				'DescripcionMensaje' => 'Authentication Failed',
 				);
-
 				// write message to the log file
-				$this->errorlog->lwrite('An error occurred while trying to authenticate your account with username='.$uname.' and password='.$passwd.'');
-
-				xml_viewpage($invoiceDetails);
+				$this->errorlog->lwrite('An error occurred while trying to authenticate your account with username='.$uname.' and password='.$passwd.'');				
 		}
+		xml_viewpage($invoice);
 	}
 	//update fee transaction details in fedena as well as LMS
 	public function _callFedena($inNum, $transactionId, $amount, $paymentDate, $canal)
@@ -246,10 +239,8 @@ class Invoice extends CI_Controller
 						'CodigoMensaje' => '105',
 						'DescripcionMensaje' => 'Amount is greater than invoice amount',
 					);
-
 					// write message to the log file
 					$this->errorlog->lwrite('Amount is greater than invoice amount');
-
 				}else{
 					foreach($feeDetails as $fees)
 					{
@@ -331,14 +322,13 @@ class Invoice extends CI_Controller
 					'DescripcionMensaje' => 'No student found',
 					);
 		}
-
-
-		xml_viewpage($updateDetails);
+		return $updateDetails;
 	}
 	//update fee transaction details in Bookstore as well as LMS
 	public function _callBookstore($inNum, $transactionId, $amount, $paymentDate, $canal)
 	{
-		$orderDetails = $this->search->getBookstoreInvoiceDetails($inNum);
+		$bank_status = BANCO_POPULAR_STATUS;
+		$orderDetails = $this->search->getBookstoreInvoiceDetails($inNum,$bank_status);
 		if($orderDetails){
 		if($amount > $orderDetails[0]['total_paid']) {
 			$updateDetails = array(
@@ -348,7 +338,6 @@ class Invoice extends CI_Controller
 
 			// write message to the log file
 			$this->errorlog->lwrite('Amount is greater than invoice amount');
-
 		} else {
 			$paymentType = 'BP - Internet Banking';
 			if($this->search->updateBookstoreOrderDetails($inNum, $transactionId, $amount, $paymentDate, $paymentType))
@@ -362,7 +351,7 @@ class Invoice extends CI_Controller
 					else
 						$lms_txn_id = DEFAULT_LMS_TXN_ID;
 				$bank_id = BP_BANK_ID;
-				$this->search->updateLMS($inNum, $app, $transactionId, $lms_txn_id, $amount, $paymentDate, '', $customer_id, '', $canal, $bank_id);
+				$this->search->updateLMS($inNum, $app, $transactionId, $lms_txn_id, $amount, $paymentDate, '', $customer_id, $paymentType , $canal, $bank_id);
 				$updateDetails = array(
 				'CodigoMensaje' => '100',
 				'DescripcionMensaje' => 'Order Details Updated',
@@ -377,10 +366,8 @@ class Invoice extends CI_Controller
 				'CodigoMensaje' => '106',
 				'DescripcionMensaje' => 'Order Details Not Updated',
 				);
-
 				// write message to the log file
 				$this->errorlog->lwrite('Order Details Not Updated');
-
 			}
 		}
 		}else{
@@ -388,14 +375,10 @@ class Invoice extends CI_Controller
 				'CodigoMensaje' => '104',
 				'DescripcionMensaje' => 'Invoice Not Valid',
 				);
-
 				// write message to the log file
 				$this->errorlog->lwrite('The invoice number - '.$inNum.' exist in our record but there is no due amount against this invoice.');
-
 		}
-
-
-		xml_viewpage($updateDetails);
+		return $updateDetails;
 	}
 	//Validating the transactions
 	public function ConciliarPagos()
@@ -407,10 +390,10 @@ class Invoice extends CI_Controller
 		if(!empty($authDetails))
 		{
 			$xmlstring = '<DetalleConsulta>
-			<IDTransaccion>111112</IDTransaccion>
-			<FechaTransaccion>2014-06-23 15:30:48.000000</FechaTransaccion>
-			<Valor>34.75</Valor>
-			<Referencia>QREQBPRBM</Referencia>
+			<IDTransaccion>98769</IDTransaccion>
+			<FechaTransaccion>2015-06-10 00:00:00.000000</FechaTransaccion>
+			<Valor>100</Valor>
+			<Referencia>185344</Referencia>
 			</DetalleConsulta>';
 
 			// load as string
@@ -460,9 +443,7 @@ class Invoice extends CI_Controller
 
 				// write message to the log file
 				$this->errorlog->lwrite('An error occurred while trying to authenticate your account with username='.$uname.' and password='.$passwd.'');
-
 		}
-
 		xml_viewpage($invoiceDetails);
 	}
 	public function _sendEmail($subject, $message)
