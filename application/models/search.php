@@ -5,7 +5,7 @@ class Search extends CI_Model
 	public function getDetails($uname, $passwd)
 	{
 		$this->_DB_LMS = $this->load->database('default', TRUE);
-		$query = $this->_DB_LMS->get_where('authentication', array('username' => $uname, 'password' => $passwd));
+		$query = $this->_DB_LMS->get_where('authentication', array('username' => $uname, 'password' => md5($passwd)));
 		return $query->result_array();
 	}
 	/*finding the student unique id into the fedena system*/
