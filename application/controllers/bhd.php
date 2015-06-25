@@ -8,15 +8,17 @@ class BHD extends CI_Controller
 		$this->load->library('errorlog');
 		$this->load->helper('my_helper');
 	}
-	/* Varify the invoice number in fedena and bookstore*/
+	/* FIRST API - Varify the invoice number in fedena and bookstore*/
 	public function verifyInvoice()
 	{
 		$inNum  = $this->input->get('Num_Referencia');
+		//search the invoice number in colered LMS Server
 		$invoiceDetails=$this->_searchFedena($inNum);
 		$invoiceDetails1=$this->_searchBookstore($inNum);
 		$encodedInvoice = array();
 		$invoice = array();
 		if($invoiceDetails['Codigo_Respuesta'] == '100' && $invoiceDetails1['Codigo_Respuesta'] == '100' ){
+				//if found in both databases
 				$invoice['Codigo_Respuesta'] = '104';
 				$invoice['Descripción_Respuesta'] = 'Invoice Not Valid';
 				$message = 'Dear Admin<br/>The invoice number - '.$inNum.' exists in both databases. Please check.<br/><br/>Thanks,<br/>Banco Popular.';
@@ -26,6 +28,7 @@ class BHD extends CI_Controller
 				$this->errorlog->lwrite('The invoice number - '.$inNum.' exists in both databases bookstore and Fedena.');
 
 			}elseif($invoiceDetails['Codigo_Respuesta'] == '102' && $invoiceDetails1['Codigo_Respuesta'] == '102' ){
+				//if not found in any databases
 				$invoice['Codigo_Respuesta'] = '104';
 				$invoice['Descripción_Respuesta'] = 'Invoice Not Found';
 				$message = 'Dear Admin<br/>The invoice number - '.$inNum.' does not found in any database. Please check.<br/><br/>Thanks,<br/>Banco Popular.';
@@ -36,10 +39,13 @@ class BHD extends CI_Controller
 				$this->errorlog->lwrite('The invoice number - '.$inNum.' does not found in any database bookstore and Fedena.');
 
 			}elseif($invoiceDetails['Codigo_Respuesta'] == '100' && $invoiceDetails1['Codigo_Respuesta'] != '100'){
+				//if found in fedena but not in bookstore
 				$invoice = $invoiceDetails;
 			}elseif($invoiceDetails['Codigo_Respuesta'] != '100' && $invoiceDetails1['Codigo_Respuesta'] == '100'){
+				//if found in bookstore but not in fedena
 				$invoice = $invoiceDetails1;
 			}elseif($invoiceDetails['Codigo_Respuesta'] == '103' && $invoiceDetails1['Codigo_Respuesta'] != '100'){
+				//if found in colered LS Server but no due amount exist
 				$invoice['Codigo_Respuesta'] = '104';
 				$invoice['Descripción_Respuesta'] = 'Invoice Not Valid';
 
@@ -50,7 +56,7 @@ class BHD extends CI_Controller
 		foreach($invoice as $key => $value){
 			$encodedInvoice[$this->_mb_convert($key)] = $value;
 		}
-
+		//converts array into xml
 		xml_viewpage($encodedInvoice);
 	}
 	/* Search the invoice number in Fedena. If found return the details otherwise error*/
@@ -61,6 +67,7 @@ class BHD extends CI_Controller
 		if($studentDetails)
 		{
 			$StudentID = $studentDetails[0]['id'];
+			//Call to model function to get the fee details against invoice.
 			$feeDetails = $this->search->getFedenaInvoiceDetails($StudentID);
 			$invoice=array();
 			if($feeDetails)
@@ -116,6 +123,7 @@ class BHD extends CI_Controller
 	{
 	    $invoice=array();
 		$bank_status = BHD_STATUS;
+		//Call to model function to get the order details against invoice.
 		$orderDetails = $this->search->getBookstoreInvoiceDetails($inNum,$bank_status);
 		if($orderDetails && sizeof($orderDetails) == 1)
 		{
@@ -152,20 +160,23 @@ class BHD extends CI_Controller
 		}
 	return $invoice;
 	}
-	/*To update the transcation detail into the fedena,boookstore and lms system*/
+	/*Second API - To update the transcation detail into the fedena,boookstore and lms system*/
 	public function applyPayment()
 	{
+		//get the parameters from url
 		$inNum = $this->input->get('Num_Referencia');
 		$descRef = $this->input->get('Description');
 		$amount = $this->input->get('Total_Pagar');
 		$paymentType = $this->input->get('Tipo_Pago');
 		$canal    = $this->input->get('Canal');
+		//serach invoice in lms database
 		$apps = $this->search->searchInvoice($inNum);
-		//print"<pre>";print_r($apps);die;
 		$invoice = '';
 		if($apps[0]['app_id'] == FEDENA_APP_ID) {
+			//if found in fedena, update the fedena database
 			$invoice = $this->_callFedena($inNum, $descRef, $amount, $paymentType,$canal);
 		}elseif($apps[0]['app_id'] == BOOKSTORE_APP_ID){
+			//if found in bookstore, update the bookstore database
 			$invoice = $this->_callBookstore($inNum, $descRef, $amount, $paymentType,$canal);
 		}else{
 			$invoice['Codigo_Respuesta'] = '104';
@@ -177,13 +188,14 @@ class BHD extends CI_Controller
 		foreach($invoice as $key => $value){
 			$encodedInvoice[$this->_mb_convert($key)] = $value;	
 		}
-
+		//converts array into xml
 		xml_viewpage($encodedInvoice);
 	}
-	/*Validating the transactions*/
+	/*THIRD API - Validating the transactions*/
 	public function reconciliation()
 	{
-		    $caseId    = $this->input->get('IdCaja');
+		    //get the parameters from url
+			$caseId    = $this->input->get('IdCaja');
 		    $origin_Guid = $this->input->get('GuidOrigen');
 			$transactions=array("IDTransaccion"=>"123456","FechaTransaccion"=>"2014-06-23 15:30:48.000000","cantidad"=>"1000","Referencia"=>"185344");
 			$txn_id = $transactions['IDTransaccion'];
@@ -196,6 +208,7 @@ class BHD extends CI_Controller
 			   $book_store_invoice_num=$txnDetails['0']['invoice_number'];
 			   $this->search->updateLmsCaseGuidId($book_store_app_id,$book_store_invoice_num,$caseId,$origin_Guid);
 			}*/
+			//if transaction validates, return the response otherwise error
 			if($txnDetails)
 			{
 				$inv_no = $txnDetails['0']['invoice_number'];
@@ -231,9 +244,10 @@ class BHD extends CI_Controller
 
 		xml_viewpage($invoiceDetails);
 	}
-	/*To cancel the transaction and updating in LMS aaplcation and bookstore */
+	/*FORTH API - To cancel the transaction and updating in LMS Server*/
 	public function reverse()
 	{
+		//get the parameters from url
 		$caseId = $this->input->get('IdCaja');
 		$origin_Guid = $this->input->get('GuidOrigen');
 		$cancelGuid = $this->input->get('GuidDetalleAnular');
@@ -245,6 +259,7 @@ class BHD extends CI_Controller
 	       $id=$order_detail[0]['id'];
 		   $update_date = date("Y-m-d H:i:s");
 		   $this->search->updateOrderDetail($invoice_num,$update_date);
+		   //update lms cancel status
 		   $this->search->updateLmsCancelStatus($cancelGuid,$type,$reason,$invoice_num,$id,$caseId,$origin_Guid);
 		   $invoiceDetails = array(
 					'CodRespuesta' => '100',
@@ -262,7 +277,7 @@ class BHD extends CI_Controller
 					// write message to the log file
 					$this->errorlog->lwrite('Transaction cancellation process has been failed');
 		}
-
+		//converts array into xml
 		xml_viewpage($invoiceDetails);
 	}
 
@@ -332,6 +347,7 @@ class BHD extends CI_Controller
 						}
 					}
 					$app = FEDENA_APP_ID;
+					//get lms transaction id
 					$lms_txn_id = $this->search->getMaxLMSTxnId();
 					if($lms_txn_id)
 						$lms_txn_id = $lms_txn_id[0]['lms_txn_id'] + 1;
@@ -373,7 +389,7 @@ class BHD extends CI_Controller
 		}
 		return $updateDetails;
 	}
-	/*Update fee transaction details in Bookstore as well as LMS*/
+	/*Update order transaction details in Bookstore as well as LMS*/
 	public function _callBookstore($inNum, $descRef, $amount, $paymentType,$canal)
 	{
 		$bank_status = BHD_STATUS;
@@ -392,6 +408,7 @@ class BHD extends CI_Controller
 				$app = BOOKSTORE_APP_ID;
 				$customers = $this->search->getCustomerId($inNum);
 				$customer_id = $customers['0']['id_customer'];
+				//get lms transaction id
 				$lms_txn_id = $this->search->getMaxLMSTxnId();
 				if($lms_txn_id)
 						$lms_txn_id = $lms_txn_id[0]['lms_txn_id'] + 1;

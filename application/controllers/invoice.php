@@ -10,18 +10,23 @@ class Invoice extends CI_Controller
 	}
 	public function VerificarReferencia()
 	{
+		//get the parameters from url
 		$uname    = $this->input->get('psUsuario');
 		$passwd    = $this->input->get('psPassword');
 		$canal    = $this->input->get('psCanal');
 		$inNum    = $this->input->get('psReferencia');
+		//authenticate the api request
 		$authDetails = $this->_verifyCredentials($uname, $passwd, PAY_TYPE_BANKPOPULAR);
+		//if authenticated then process else stop
 		if(!empty($authDetails))
 		{
+			//search the invoice number in colered LMS Server
 			$invoiceDetails = $this->_searchFedena($inNum);
 			$invoiceDetails1 = $this->_searchBookstore($inNum);
 			$invoice = array();
 			if($invoiceDetails['CodigoMensaje'] == '100' && $invoiceDetails1['CodigoMensaje'] == '100')
 			{
+				//if found in both databases
 				$invoice['CodigoMensaje'] = '104';
 				$invoice['DescripcionMensaje'] = 'Invoice Not Valid';
 				$message = 'Dear Admin<br/>The invoice number - '.$inNum.' exists in both databases. Please check.<br/><br/>Thanks,<br/>Banco Popular.';
@@ -31,6 +36,7 @@ class Invoice extends CI_Controller
 				$this->errorlog->lwrite('The invoice number - '.$inNum.' exists in both databases Bookstore and Fedena.');
 
 			}elseif($invoiceDetails['CodigoMensaje'] == '102' && $invoiceDetails1['CodigoMensaje'] == '102'){
+				//if not found in any databases
 				$invoice['CodigoMensaje'] = '104';
 				$invoice['DescripcionMensaje'] = 'Invoice Not Found';
 				$message = 'Dear Admin<br/>The invoice number - '.$inNum.' does not found in any database. Please check.<br/><br/>Thanks,<br/>Banco Popular.';
@@ -41,10 +47,13 @@ class Invoice extends CI_Controller
 				$this->errorlog->lwrite('The invoice number - '.$inNum.' does not found in any database Bookstore and Fedena.');
 
 			}elseif($invoiceDetails['CodigoMensaje'] == '100' && $invoiceDetails1['CodigoMensaje'] != '100'){
+				//if found in fedena but not in bookstore
 				$invoice = $invoiceDetails;
 			}elseif($invoiceDetails['CodigoMensaje'] != '100' && $invoiceDetails1['CodigoMensaje'] == '100'){
+				//if found in bookstore but not in fedena
 				$invoice = $invoiceDetails1;
 			}elseif($invoiceDetails['CodigoMensaje'] == '103' && $invoiceDetails1['CodigoMensaje'] != '100'){
+				//if found in colered LS Server but no due amount exist
 				$invoice['CodigoMensaje'] = '104';
 				$invoice['DescripcionMensaje'] = 'Invoice Not Valid';
 
@@ -61,6 +70,7 @@ class Invoice extends CI_Controller
 				// write message to the log file
 				$this->errorlog->lwrite('An error occurred while trying to authenticate your account with username='.$uname.' and password='.$passwd.'');
 		}
+		//converts array into xml
 		xml_viewpage($invoice);
 	}
 	/* Function to authenticate API Call */
@@ -74,6 +84,7 @@ class Invoice extends CI_Controller
 	{
 		$invoice=array();
 		$bank_status = BANCO_POPULAR_STATUS;
+		//Call to model function to get the order details against invoice.
 		$orderDetails = $this->search->getBookstoreInvoiceDetails($inNum,$bank_status);
 		if($orderDetails && sizeof($orderDetails) == 1)
 		{
@@ -116,6 +127,7 @@ class Invoice extends CI_Controller
 		if($studentDetails)
 		{
 			$StudentID = $studentDetails[0]['id'];
+			//Call to model function to get the fee details against invoice.
 			$feeDetails = $this->search->getFedenaInvoiceDetails($StudentID);
 			if($feeDetails)
 			{
@@ -181,8 +193,10 @@ class Invoice extends CI_Controller
 			}
 		}
 	}
+	/*Second API - To update the transcation detail into the fedena,boookstore and lms system*/
 	public function RegistrarPago()
 	{
+		//get the parameters from url
 		$uname    = $this->input->get('psUsuario');
 		$passwd    = $this->input->get('psPassword');
 		$canal    = $this->input->get('psCanal');
@@ -193,11 +207,14 @@ class Invoice extends CI_Controller
 		$authDetails = $this->_verifyCredentials($uname, $passwd, PAY_TYPE_BANKPOPULAR);
 		if(!empty($authDetails))
 		{
+			//search invoice in lms database
 			$apps = $this->search->searchInvoice($inNum);
 			if($apps[0]['app_id'] == FEDENA_APP_ID)
 			{
+				//if found in fedena, update the fedena database
 				$invoice = $this->_callFedena($inNum, $transactionId, $amount, $paymentDate, $canal);
 			}elseif($apps[0]['app_id'] == BOOKSTORE_APP_ID){
+				//if found in bookstore, update the bookstore database
 				$invoice = $this->_callBookstore($inNum, $transactionId, $amount, $paymentDate, $canal);
 			}else{
 				$invoice = array(
@@ -215,6 +232,7 @@ class Invoice extends CI_Controller
 				// write message to the log file
 				$this->errorlog->lwrite('An error occurred while trying to authenticate your account with username='.$uname.' and password='.$passwd.'');				
 		}
+		//converts array into xml
 		xml_viewpage($invoice);
 	}
 	//update fee transaction details in fedena as well as LMS
@@ -283,6 +301,7 @@ class Invoice extends CI_Controller
 						}
 					}
 					$app = FEDENA_APP_ID;
+					//get lms transaction id
 					$lms_txn_id = $this->search->getMaxLMSTxnId();
 					if($lms_txn_id)
 						$lms_txn_id = $lms_txn_id[0]['lms_txn_id'] + 1;
@@ -345,6 +364,7 @@ class Invoice extends CI_Controller
 				$app = BOOKSTORE_APP_ID;
 				$customers = $this->search->getCustomerId($inNum);
 				$customer_id = $customers['0']['id_customer'];
+				//get lms transaction id
 				$lms_txn_id = $this->search->getMaxLMSTxnId();
 				if($lms_txn_id)
 						$lms_txn_id = $lms_txn_id[0]['lms_txn_id'] + 1;
@@ -380,9 +400,10 @@ class Invoice extends CI_Controller
 		}
 		return $updateDetails;
 	}
-	//Validating the transactions
+	//THIRD API - Validating the transactions
 	public function ConciliarPagos()
 	{
+		//get the parameters from url
 		$uname    = $this->input->get('psUsuario');
 		$passwd    = $this->input->get('psPassword');
 		$canal    = $this->input->get('psCanal');
@@ -405,6 +426,7 @@ class Invoice extends CI_Controller
 			$txn_amt = $transactions['Valor'];
 			$txn_ref = $transactions['Referencia'];
 			$txnDetails = $this->search->checkTransactionExist($txn_id);
+			//if transaction validates, return the response otherwise error
 			if($txnDetails)
 			{
 				$inv_no = $txnDetails['0']['invoice_number'];
@@ -429,7 +451,7 @@ class Invoice extends CI_Controller
 				}
 			}else{
 					$invoiceDetails = array(
-					'CodigoMensaje' => '105',
+					'CodigoMensaje' => '106',
 					'DescripcionMensaje' => 'Transaction not validated successfully',
 					);
 					// write message to the log file

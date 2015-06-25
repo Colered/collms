@@ -412,7 +412,7 @@ class Search extends CI_Model
 		$query = $this->_DB_LMS->get();
 		return $query->result_array();
 	}
-
+	//function to update order status
 	public function updateOderStatus($order_reference,$status=4)
 	{
 			$dateUpd = date("Y-m-d H:i:s");
@@ -429,7 +429,7 @@ class Search extends CI_Model
 			//echo $this->_DB_BOOK->last_query();
 
     }
-
+	//function to get order number by reference
 	public function checkOrder_Reference($order_reference)
 	{
 			$this->_DB_BOOK = $this->load->database('bookstore', TRUE);
@@ -440,16 +440,13 @@ class Search extends CI_Model
 		    return $query->result_array();
 
     }
-
-    public function getSingleVal($table,$val,$where)
+	public function getSingleVal($table,$val,$where)
 	{
 		$this->_DB_BOOK = $this->load->database('bookstore', TRUE);
 		$this->_DB_BOOK->select($val);
 		$this->_DB_BOOK->from($table);
 		$this->_DB_BOOK->where($where);
 		$query = $this->_DB_BOOK->get();
-
 		return $query->num_rows();
-
     }
 }
